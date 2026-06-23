@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
-import API_BASE_URL from '../config';
+import api from '../config';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -13,12 +12,13 @@ export default function LoginPage() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
+      const response = await api.post('/auth/login', {
         employeeId,
         password,
       });
       if (response.status === 200) {
         localStorage.setItem('isAuth', 'true');
+        localStorage.setItem('token', response.data.token);
         navigate('/dashboard', { replace: true });
       }
     } catch (err) {

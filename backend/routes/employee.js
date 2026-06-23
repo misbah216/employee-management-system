@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
 const Employee = require('../models/Employee');
+const verifyToken = require('../middleware/auth');
 
 const fallbackEmployees = [];
 
@@ -13,33 +14,38 @@ const toSafeEmployee = (emp) => ({
   salary: Number(emp.salary) || 0,
 });
 
-// GET all
+// Apply auth middleware to ALL routes below
+router.use(verifyToken);
+
+// GET all - only employees created by logged-in user
 router.get('/', async (req, res) => {
   try {
     if (useFallback()) {
-      return res.json(fallbackEmployees);
+      const myEmployees = fallbackEmployees.filter((emp) => emp.createdBy === req.userId);
+      return res.json(myEmployees);
     }
 
-    const employees = await Employee.find();
+    const employees = await Employee.find({ createdBy: req.userId });
     return res.json(employees);
   } catch (err) {
     return res.status(500).json({ message: 'Failed to fetch employees', error: err.message });
   }
 });
 
-// POST create
+// POST create - automatically tag with createdBy
 router.post('/', async (req, res) => {
   try {
     if (useFallback()) {
       const saved = toSafeEmployee({
         ...req.body,
         _id: String(Date.now()),
+        createdBy: req.userId,
       });
       fallbackEmployees.push(saved);
       return res.status(201).json(saved);
     }
 
-    const emp = new Employee(req.body);
+    const emp = new Employee({ ...req.body, createdBy: req.userId });
     const saved = await emp.save();
     return res.status(201).json(saved);
   } catch (err) {
@@ -47,11 +53,13 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT update
+// PUT update - only if owned by logged-in user
 router.put('/:id', async (req, res) => {
   try {
     if (useFallback()) {
-      const index = fallbackEmployees.findIndex((emp) => emp._id === req.params.id);
+      const index = fallbackEmployees.findIndex(
+        (emp) => emp._id === req.params.id && emp.createdBy === req.userId
+      );
       if (index === -1) {
         return res.status(404).json({ message: 'Employee not found' });
       }
@@ -63,20 +71,29 @@ router.put('/:id', async (req, res) => {
       return res.json(fallbackEmployees[index]);
     }
 
-    const updated = await Employee.findByIdAndUpdate(
-      req.params.id, req.body, { new: true }
+    const updated = await Employee.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.userId },
+      req.body,
+      { new: true }
     );
+
+    if (!updated) {
+      return res.status(404).json({ message: 'Employee not found or not authorized' });
+    }
+
     return res.json(updated);
   } catch (err) {
     return res.status(500).json({ message: 'Failed to update employee', error: err.message });
   }
 });
 
-// DELETE
+// DELETE - only if owned by logged-in user
 router.delete('/:id', async (req, res) => {
   try {
     if (useFallback()) {
-      const index = fallbackEmployees.findIndex((emp) => emp._id === req.params.id);
+      const index = fallbackEmployees.findIndex(
+        (emp) => emp._id === req.params.id && emp.createdBy === req.userId
+      );
       if (index === -1) {
         return res.status(404).json({ message: 'Employee not found' });
       }
@@ -85,7 +102,15 @@ router.delete('/:id', async (req, res) => {
       return res.json({ message: 'Employee deleted' });
     }
 
-    await Employee.findByIdAndDelete(req.params.id);
+    const deleted = await Employee.findOneAndDelete({
+      _id: req.params.id,
+      createdBy: req.userId,
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ message: 'Employee not found or not authorized' });
+    }
+
     return res.json({ message: 'Employee deleted' });
   } catch (err) {
     return res.status(500).json({ message: 'Failed to delete employee', error: err.message });

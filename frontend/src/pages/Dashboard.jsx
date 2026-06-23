@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../config';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
 import EmployeeCard from '../components/EmployeeCard';
-import API_BASE_URL from '../config';
+
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const res = await axios.get(`${API_BASE_URL}/employees`);
+        const res = await api.get('/employees');
         setEmployees(res.data || []);
       } finally {
         setLoading(false);
@@ -26,7 +26,7 @@ export default function Dashboard() {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`${API_BASE_URL}/employees/${id}`);
+      await api.delete(`/employees/${id}`);
       setEmployees((prev) => prev.filter((emp) => emp._id !== id));
     } catch (err) {
       console.error("Delete failed", err);

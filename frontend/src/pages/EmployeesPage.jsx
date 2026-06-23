@@ -1,12 +1,9 @@
 import { useEffect, useState, useMemo } from 'react';
-import axios from 'axios';
+import api from '../config';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
 import EmployeeCard from '../components/EmployeeCard';
 import { useTheme } from '../context/ThemeContext';
-import API_BASE_URL from '../config';
-
-const API = `${API_BASE_URL}/employees`;
 
 export default function EmployeesPage() {
   const { theme } = useTheme();
@@ -19,7 +16,7 @@ export default function EmployeesPage() {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const res = await axios.get(API);
+        const res = await api.get('/employees');
         setEmployees(res.data || []);
       } finally {
         setLoading(false);
@@ -30,7 +27,7 @@ export default function EmployeesPage() {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`${API}/${id}`);
+      await api.delete(`/employees/${id}`);
       setEmployees((prev) => prev.filter((emp) => emp._id !== id));
     } catch (err) {
       console.error("Delete failed", err);

@@ -1,11 +1,9 @@
 import { useState } from 'react';
-import axios from 'axios';
+import api from '../config';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
-import API_BASE_URL from '../config';
 
-const API = `${API_BASE_URL}/employees`;
 
 export default function AddEmployeePage() {
   const navigate = useNavigate();
@@ -14,7 +12,7 @@ export default function AddEmployeePage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await axios.post(API, { ...form, salary: Number(form.salary) });
+    await api.post('/employees', { ...form, salary: Number(form.salary) });
     navigate('/dashboard');
   };
 

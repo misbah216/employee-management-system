@@ -1,3 +1,4 @@
+const jwt = require('jsonwebtoken');
 const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
@@ -46,7 +47,8 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid Employee ID or Password" });
     }
 
-    res.status(200).json({ message: "Login successful" });
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    res.status(200).json({ message: "Login successful", token });
   } catch (error) {
     res.status(500).json({ message: "Error logging in", error: error.message });
   }
@@ -69,13 +71,13 @@ router.post("/forgot-password", async (req, res) => {
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
-        user: "saifimisbah7@gmail.com",
-        pass: "iaxjencmafvgkqkd",
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_PASS,
       },
     });
 
     const mailOptions = {
-      from: "saifimisbah7@gmail.com",
+      from: process.env.GMAIL_USER,
       to: email,
       subject: "PrabandhPro - Password Reset OTP",
       text: `Your OTP for password reset is: ${otp}. Valid for 10 minutes.`,

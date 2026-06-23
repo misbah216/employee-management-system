@@ -1,8 +1,7 @@
 import { useState } from 'react';
+import api from '../config';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import API_BASE_URL from '../config';
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -38,8 +37,8 @@ export default function SignupPage() {
     }
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/signup`, {
-        name,
+	const response = await api.post('/auth/signup', {
+              name,
         employeeId,
         email,
         password,
