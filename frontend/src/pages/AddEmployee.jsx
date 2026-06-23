@@ -9,8 +9,13 @@ export default function AddEmployee() {
   const navigate = useNavigate();
 
   const handleAdd = async (formData) => {
-    await axios.post(API, formData);
-    navigate('/');  // Add hone ke baad Home pe redirect
+    const token = localStorage.getItem('token');
+    await axios.post(API, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    navigate('/');
   };
 
   return (
