@@ -9,6 +9,7 @@ export default function Login() {
   const handleLogin = () => {
     if (password === 'admin123') {
       localStorage.setItem('isAuth', 'true');
+      localStorage.setItem("token",Response.data.token);
       navigate('/');
     } else {
       setError('Wrong password!');
