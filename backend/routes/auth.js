@@ -1,60 +1,137 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
-import API_BASE_URL from '../config';
+const jwt = require('jsonwebtoken');
+const express = require("express");
+const router = express.Router();
+const User = require("../models/User");
+const bcrypt = require("bcryptjs");
+const nodemailer = require("nodemailer");
 
-export default function Login() {
-  const [employeeId, setEmployeeId] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
-
-  const handleLogin = async () => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
-        employeeId,
-        password
-      });
-      localStorage.setItem('isAuth', 'true');
-      localStorage.setItem('token', response.data.token);
-      navigate('/');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Error logging in');
+// Signup Route
+router.post("/signup", async (req, res) => {
+  const { name, employeeId, email, password } = req.body;
+  try {
+    const existingUser = await User.findOne({ employeeId });
+    if (existingUser) {
+      return res.status(400).json({ message: "Employee ID already taken" });
     }
-  };
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
 
-  return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <div className="bg-gray-900 p-8 rounded-xl w-full max-w-sm">
-        <h2 className="text-2xl font-bold text-indigo-400 mb-6 text-center">
-          🔐 Admin Login
-        </h2>
-        <input
-          type="text"
-          placeholder="Enter Employee ID"
-          value={employeeId}
-          onChange={(e) => setEmployeeId(e.target.value)}
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 mb-3"
-        />
-        <input
-          type="password"
-          placeholder="Enter password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 mb-3"
-        />
-        {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
-        <button
-          onClick={handleLogin}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 py-2 rounded-lg font-medium transition text-white"
-        >
-          Login
-        </button>
-        <p className="text-gray-500 text-sm text-center mt-4">
-          Don't have an account?{' '}
-          <Link to="/signup" className="text-indigo-400 hover:underline">Create one</Link>
-        </p>
-      </div>
-    </div>
-  );
-}
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({
+      name,
+      employeeId,
+      email,
+      password: hashedPassword,
+    });
+
+    await newUser.save();
+    res.status(201).json({ message: "Account created! Please login." });
+  } catch (error) {
+    res.status(500).json({ message: "Error creating account", error: error.message });
+  }
+});
+
+// Login Route
+router.post("/login", async (req, res) => {
+  const { employeeId, password } = req.body;
+  try {
+    const user = await User.findOne({ employeeId });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid Employee ID or Password" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid Employee ID or Password" });
+    }
+
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    res.status(200).json({ message: "Login successful", token });
+  } catch (error) {
+    res.status(500).json({ message: "Error logging in", error: error.message });
+  }
+});
+
+// Forgot Password - Send OTP
+router.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "No account found with this email" });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.resetOTP = otp;
+    user.otpExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes
+    await user.save();
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.GMAIL_USER,
+      to: email,
+      subject: "PrabandhPro - Password Reset OTP",
+      text: `Your OTP for password reset is: ${otp}. Valid for 10 minutes.`,
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.json({ message: "OTP sent to your email" });
+  } catch (error) {
+    res.status(500).json({ message: "Error sending OTP", error: error.message });
+  }
+});
+
+// Verify OTP
+router.post("/verify-otp", async (req, res) => {
+  const { email, otp } = req.body;
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.resetOTP || user.resetOTP !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    if (user.otpExpiry < Date.now()) {
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    res.json({ verified: true });
+  } catch (error) {
+    res.status(500).json({ message: "Error verifying OTP", error: error.message });
+  }
+});
+
+// Reset Password
+router.post("/reset-password", async (req, res) => {
+  const { email, newPassword } = req.body;
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    user.resetOTP = null;
+    user.otpExpiry = null;
+    await user.save();
+
+    res.json({ message: "Password reset successful" });
+  } catch (error) {
+    res.status(500).json({ message: "Error resetting password", error: error.message });
+  }
+});
+
+module.exports = router;
