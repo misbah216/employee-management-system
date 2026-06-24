@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import API_BASE_URL from '../config';
+import api from '../config';
 
 export default function Login() {
   const [employeeId, setEmployeeId] = useState('');
@@ -11,10 +10,10 @@ export default function Login() {
 
   const handleLogin = async () => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
-        employeeId,
-        password
-      });
+      const response = await api.post('/auth/login', {
+      employeeId,
+      password
+    });
       console.log(response.data);
       localStorage.setItem('isAuth', 'true');
       localStorage.setItem('token', response.data.token);
