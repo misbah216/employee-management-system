@@ -9,7 +9,8 @@ export default function AddEmployee() {
 
   const handleAdd = async (formData) => {
     const token = localStorage.getItem('token');
-    await api.post('auth/employee', formData ,{
+    console.log("token=",token);
+    await api.post('employees', formData ,{
       headers: {
         Authorization: `Bearer ${token}`
       }

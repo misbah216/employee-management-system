@@ -15,6 +15,7 @@ export default function Login() {
         employeeId,
         password
       });
+      console.log(response.data);
       localStorage.setItem('isAuth', 'true');
       localStorage.setItem('token', response.data.token);
       navigate('/');
