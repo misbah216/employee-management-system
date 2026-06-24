@@ -1,16 +1,15 @@
 import EmployeeForm from '../components/EmployeeForm';
-import axios from 'axios';
+import api from '../config';
 import { useNavigate } from 'react-router-dom';
-import API_BASE_URL from '../config';
 
-const API = `${API_BASE_URL}/employees`;
+
 
 export default function AddEmployee() {
   const navigate = useNavigate();
 
   const handleAdd = async (formData) => {
     const token = localStorage.getItem('token');
-    await axios.post(API, formData, {
+    await api.post('auth/AddEmployee', {
       headers: {
         Authorization: `Bearer ${token}`
       }
