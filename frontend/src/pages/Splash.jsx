@@ -39,7 +39,7 @@ export default function Splash() {
                   initial={{ opacity: 0, y: 0, rotate: 0 }}
                   animate={falling ? { opacity: 0, y: 120 + index * 10, rotate: 12 } : { opacity: show ? 1 : 0, y: 0, rotate: 0 }}
                   transition={falling ? { duration: 0.55, delay: index * 0.04, ease: 'easeOut' } : { duration: 0.18 }}
-                  className="font-[Georgia,Times_New_Roman,serif] text-4xl md:text-5xl font-black tracking-[0.18em] italic"
+                  className="font-[Georgia,Times_New_Roman,serif] text-4xl md:text-4xl font-black tracking-[0.18em] italic"
                 >
                   {letter}
                 </motion.span>
